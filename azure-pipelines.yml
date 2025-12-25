@@ -4,32 +4,38 @@ trigger:
       - main
 
 pool:
-  name: agentavi
+  name: agentavi   # ✅ YOUR SELF-HOSTED AGENT
 
 variables:
-  azureServiceConnection: infraservice
-  subscriptionId: b6571c78-f766-4999-8358-e9602abe50cf
+  # Azure details
+  azureServiceConnection: 'infraservice'
+  subscriptionId: 'b6571c78-f766-4999-8358-e9602abe50cf'
 
-  tfWorkingDir: $(System.DefaultWorkingDirectory)/environment/dev
+  # Terraform working directory
+  tfWorkingDir: '$(System.DefaultWorkingDirectory)/environment/dev'
 
-  backendRG: myResourceGroup
-  backendStorage: avistorage888
-  backendContainer: avicnt
-  backendKey: ram.terraform.tfstate
+  # Backend configuration
+  backendRG: 'myResourceGroup'
+  backendStorage: 'avistorage888'
+  backendContainer: 'avicnt'
+  backendKey: 'ram.terraform.tfstate'
 
+#####################################
+# STAGE 1 : INIT + VALIDATE + PLAN
+#####################################
 stages:
-
-# ================= INIT + PLAN =================
-- stage: Terraform_Init_Plan
-  displayName: Terraform_Init_and_Plan
+- stage: INITSTAGE
+  displayName: Terraform_Init_Plan
   jobs:
-  - job: InitJob
-    displayName: InitJob
+  - job: INITJOB
+    displayName: Terraform_Init_Job
     steps:
 
+    # Check Terraform availability on agent
     - script: terraform version
       displayName: Check_Terraform
 
+    # Terraform INIT
     - task: TerraformTask@5
       displayName: Terraform_Init
       inputs:
@@ -43,6 +49,7 @@ stages:
         backendAzureRmContainerName: $(backendContainer)
         backendAzureRmKey: $(backendKey)
 
+    # Terraform VALIDATE
     - task: TerraformTask@5
       displayName: Terraform_Validate
       inputs:
@@ -50,6 +57,17 @@ stages:
         command: validate
         workingDirectory: $(tfWorkingDir)
 
+    # Terraform FMT
+    - task: TerraformTask@5
+      displayName: Terraform_Fmt
+      inputs:
+        provider: azurerm
+        command: custom
+        customCommand: fmt
+        outputTo: console
+        workingDirectory: $(tfWorkingDir)
+
+    # Terraform PLAN
     - task: TerraformTask@5
       displayName: Terraform_Plan
       inputs:
@@ -59,27 +77,32 @@ stages:
         environmentServiceNameAzureRM: $(azureServiceConnection)
         environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
 
-# ================= MANUAL APPROVAL =================
-- stage: Manual_Approval
+#####################################
+# STAGE 2 : MANUAL APPROVAL
+#####################################
+- stage: ValidationStage
   displayName: Manual_Approval
-  dependsOn: Terraform_Init_Plan
+  dependsOn: INITSTAGE
   jobs:
-  - job: ApprovalJob
+  - job: validationJob
     pool: server
     steps:
     - task: ManualValidation@1
       inputs:
         notifyUsers: |
-          abhi@company.com
-        instructions: Please approve Terraform Apply
+          avinash122023@gmail.com
+        instructions: |
+          Please review Terraform Plan and approve to proceed with APPLY.
 
-# ================= APPLY =================
-- stage: Terraform_Apply
+#####################################
+# STAGE 3 : APPLY
+#####################################
+- stage: InfraDeploymentStage
   displayName: Terraform_Apply
-  dependsOn: Manual_Approval
+  dependsOn: ValidationStage
   jobs:
   - job: ApplyJob
-    displayName: ApplyJob
+    displayName: Terraform_Apply_Job
     steps:
     - task: TerraformTask@5
       displayName: Terraform_Apply
