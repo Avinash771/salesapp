@@ -7,26 +7,31 @@ pool:
   name: agentavi
 
 variables:
-  azureServiceConnection: 'infraservice'
-  subscriptionId: 'b6571c78-f766-4999-8358-e9602abe50cf'
+  azureServiceConnection: infraservice
+  subscriptionId: b6571c78-f766-4999-8358-e9602abe50cf
 
-  tfWorkingDir: '$(System.DefaultWorkingDirectory)/environment/dev'
+  tfWorkingDir: $(System.DefaultWorkingDirectory)/environment/dev
 
-  backendRG: 'myResourceGroup'
-  backendStorage: 'avistorage888'
-  backendContainer: 'avicnt'
-  backendKey: 'ram.terraform.tfstate'
+  backendRG: myResourceGroup
+  backendStorage: avistorage888
+  backendContainer: avicnt
+  backendKey: ram.terraform.tfstate
 
 stages:
-- stage: INITSTAGE
-  displayName: Terraform_Init_Plan
+
+# ================= INIT + PLAN =================
+- stage: Terraform_Init_Plan
+  displayName: Terraform_Init_and_Plan
   jobs:
-  - job: INITJOB
+  - job: InitJob
+    displayName: InitJob
     steps:
+
     - script: terraform version
       displayName: Check_Terraform
 
     - task: TerraformTask@5
+      displayName: Terraform_Init
       inputs:
         provider: azurerm
         command: init
@@ -39,20 +44,14 @@ stages:
         backendAzureRmKey: $(backendKey)
 
     - task: TerraformTask@5
+      displayName: Terraform_Validate
       inputs:
         provider: azurerm
         command: validate
         workingDirectory: $(tfWorkingDir)
 
     - task: TerraformTask@5
-      inputs:
-        provider: azurerm
-        command: custom
-        customCommand: fmt
-        outputTo: console
-        workingDirectory: $(tfWorkingDir)
-
-    - task: TerraformTask@5
+      displayName: Terraform_Plan
       inputs:
         provider: azurerm
         command: plan
@@ -60,26 +59,30 @@ stages:
         environmentServiceNameAzureRM: $(azureServiceConnection)
         environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
 
-- stage: ValidationStage
+# ================= MANUAL APPROVAL =================
+- stage: Manual_Approval
   displayName: Manual_Approval
-  dependsOn: INITSTAGE
+  dependsOn: Terraform_Init_Plan
   jobs:
-  - job: validationJob
+  - job: ApprovalJob
     pool: server
     steps:
     - task: ManualValidation@1
       inputs:
         notifyUsers: |
           abhi@company.com
-        instructions: Please approve Terraform deployment
+        instructions: Please approve Terraform Apply
 
-- stage: InfraDeploymentStage
+# ================= APPLY =================
+- stage: Terraform_Apply
   displayName: Terraform_Apply
-  dependsOn: ValidationStage
+  dependsOn: Manual_Approval
   jobs:
   - job: ApplyJob
+    displayName: ApplyJob
     steps:
     - task: TerraformTask@5
+      displayName: Terraform_Apply
       inputs:
         provider: azurerm
         command: apply
