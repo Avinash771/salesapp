@@ -21,4 +21,23 @@ stages:
               targetType: 'inline'
               script: 'tflint --init'
 
-        
+          - task: tfsec@1
+            displayName: tfsec
+            continueOnError: true
+            inputs:
+              version: 'v1.26.0'
+              dir: '$(workDir)'
+      
+      - job: terrforminit
+        displayName: Terraform init
+        steps:
+         - task: TerraformTask@5
+           inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(WorkDir)'
+              backendServiceArm: 'infraservice'
+              backendAzureRmStorageAccountName: 'avistorage888'
+              backendAzureRmContainerName: 'avicnt'
+              backendAzureRmKey: 'terraform.tfstate'
+
