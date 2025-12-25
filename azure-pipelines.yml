@@ -1,17 +1,18 @@
-trigger:
+trigger: 
   branches:
     include:
       - main
 
-pool:
-  name: agentavi   # ✅ YOUR SELF-HOSTED AGENT
+pool: agentavi
 
 variables:
+  terraformVersion: 'latest'
+
   # Azure details
   azureServiceConnection: 'infraservice'
   subscriptionId: 'b6571c78-f766-4999-8358-e9602abe50cf'
 
-  # Terraform working directory
+  # Terraform paths
   tfWorkingDir: '$(System.DefaultWorkingDirectory)/environment/dev'
 
   # Backend configuration
@@ -20,96 +21,89 @@ variables:
   backendContainer: 'avicnt'
   backendKey: 'ram.terraform.tfstate'
 
-#####################################
-# STAGE 1 : INIT + VALIDATE + PLAN
-#####################################
 stages:
+# ==========================
+# INIT Stage
+# ==========================
 - stage: INITSTAGE
-  displayName: Terraform_Init_Plan
+  displayName: "Terraform Init & Validate Stage"
   jobs:
   - job: INITJOB
-    displayName: Terraform_Init_Job
+    displayName: "Terraform Init Job"
+    pool: agentavi
     steps:
-
-    # Check Terraform availability on agent
-    - script: terraform version
-      displayName: Check_Terraform
-
-    # Terraform INIT
-    - task: TerraformTask@5
-      displayName: Terraform_Init
+    - task: TerraformInstaller@1
       inputs:
-        provider: azurerm
-        command: init
-        workingDirectory: $(tfWorkingDir)
-        backendServiceArm: $(azureServiceConnection)
-        backendAzureRmOverrideSubscriptionID: $(subscriptionId)
-        backendAzureRmResourceGroupName: $(backendRG)
-        backendAzureRmStorageAccountName: $(backendStorage)
-        backendAzureRmContainerName: $(backendContainer)
-        backendAzureRmKey: $(backendKey)
+        terraformVersion: '$(terraformVersion)'
 
-    # Terraform VALIDATE
     - task: TerraformTask@5
-      displayName: Terraform_Validate
+      displayName: 'Terraform Init with Backend'
       inputs:
-        provider: azurerm
-        command: validate
-        workingDirectory: $(tfWorkingDir)
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        backendServiceArm: 'infraservice'
+        backendAzureRmOverrideSubscriptionID: '$(b6571c78-f766-4999-8358-e9602abe50cf)'
+        backendAzureRmResourceGroupName: '$(myResourceGroup)'
+        backendAzureRmStorageAccountName: '$(avistorage888)'
+        backendAzureRmContainerName: '$(aviant)'
+        backendAzureRmKey: '$(ram.terraform.tfstate)'
 
-    # Terraform FMT
     - task: TerraformTask@5
-      displayName: Terraform_Fmt
+      displayName: 'Terraform Validate'
       inputs:
-        provider: azurerm
-        command: custom
-        customCommand: fmt
-        outputTo: console
-        workingDirectory: $(tfWorkingDir)
+        provider: 'azurerm'
+        command: 'validate'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
 
-    # Terraform PLAN
-    - task: TerraformTask@5
-      displayName: Terraform_Plan
-      inputs:
-        provider: azurerm
-        command: plan
-        workingDirectory: $(tfWorkingDir)
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
-
-#####################################
-# STAGE 2 : MANUAL APPROVAL
-#####################################
+# ==========================
+# Validation Stage (Manual Approval + Plan)
+# ==========================
 - stage: ValidationStage
-  displayName: Manual_Approval
+  displayName: "Manual Approval & Plan Stage"
   dependsOn: INITSTAGE
   jobs:
   - job: validationJob
-    pool: server
+    displayName: "Manual Approval & Terraform Plan"
+    pool: agentavi
     steps:
-    - task: ManualValidation@1
-      inputs:
-        notifyUsers: |
-          avinash122023@gmail.com
-        instructions: |
-          Please review Terraform Plan and approve to proceed with APPLY.
+    # - task: ManualValidation@1
+    #   inputs:
+    #     notifyUsers: 'user@domain.com'   # Replace with actual approver email
+    #     approvers: 'user@domain.com'     # Replace with actual approver email
+    #     instructions: 'Please approve to continue.'
 
-#####################################
-# STAGE 3 : APPLY
-#####################################
-- stage: InfraDeploymentStage
-  displayName: Terraform_Apply
-  dependsOn: ValidationStage
-  jobs:
-  - job: ApplyJob
-    displayName: Terraform_Apply_Job
-    steps:
     - task: TerraformTask@5
-      displayName: Terraform_Apply
+      displayName: 'Terraform Plan'
       inputs:
-        provider: azurerm
-        command: apply
-        commandOptions: -auto-approve
-        workingDirectory: $(tfWorkingDir)
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev)'
+        environmentServiceNameAzureRM: '$(azureServiceConnection)'
+        environmentAzureRmOverrideSubscriptionID: '$(b6571c78-f766-4999-8358-e9602abe50cf)'
+
+# ==========================
+# Apply Stage
+# ==========================
+- stage: InfraDeploymentStage
+  displayName: "Terraform Apply Stage"
+  dependsOn: ValidationStage
+  condition: succeeded()
+  jobs:
+  - job: InfraDeploymentJob
+    displayName: 'Terraform Apply'
+    pool: agentavi
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+
+    - task: TerraformTask@5
+      displayName: 'Terraform Apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev)'
+        commandOptions: '-auto-approve'
+        environmentServiceNameAzureRM: 'infraservice'
+        environmentAzureRmOverrideSubscriptionID: '$(b6571c78-f766-4999-8358-e9602abe50cf)'
