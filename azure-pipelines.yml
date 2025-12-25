@@ -7,7 +7,7 @@ trigger:
 pool: agentavi
 
 variables:
-  workDir: $(Default.SystemWorkingDirectory)/dev
+  workDir: $(System.DefaultWorkingDirectory)/dev
 
 stages:
   - stage: securityscan
