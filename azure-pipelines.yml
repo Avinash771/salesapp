@@ -4,16 +4,10 @@ trigger:
       - main
 
 pool:
-  name: 'agentavi'
+  name: agentavi
 
-  variables:
-  workDir: $(System.DefaultWorkingDirectory)/dev
-
-  # Backend configuration
-  backendRG: 'myResourceGroup'
-  backendStorage: 'avistorage888'
-  backendContainer: 'avicnt'
-  backendKey: 'ram.terraform.tfstate'
+variables:
+  workDir: '$(System.DefaultWorkingDirectory)/environment/dev'
 
 stages:
 # ---------------- INIT + PLAN ----------------
@@ -24,12 +18,16 @@ stages:
     displayName: Terraform Init Job
     steps:
 
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: '1.6.6'
+
     - task: TerraformTask@5
       displayName: Terraform Init
       inputs:
         provider: 'azurerm'
         command: 'init'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        workingDirectory: '$(workDir)'
         backendServiceArm: 'infraservice'
         backendAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
         backendAzureRmResourceGroupName: 'myResourceGroup'
@@ -42,16 +40,16 @@ stages:
       inputs:
         provider: 'azurerm'
         command: 'validate'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        workingDirectory: '$(workDir)'
 
     - task: TerraformTask@5
       displayName: Terraform FMT
       inputs:
         provider: 'azurerm'
         command: 'custom'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
-        outputTo: 'console'
         customCommand: 'fmt'
+        outputTo: 'console'
+        workingDirectory: '$(workDir)'
         environmentServiceNameAzureRM: 'infraservice'
         environmentAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
 
@@ -60,28 +58,14 @@ stages:
       inputs:
         provider: 'azurerm'
         command: 'plan'
-        workingDirectory: '$($(System.DefaultWorkingDirectory)/environment/dev)'
+        workingDirectory: '$(workDir)'
         environmentServiceNameAzureRM: 'infraservice'
         environmentAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
-
-# ---------------- MANUAL APPROVAL ----------------
-- stage: ValidationStage
-  displayName: Manual Approval
-  dependsOn: INITSTAGE
-  jobs:
-  - job: validationJob
-    pool: server
-    steps:
-    - task: ManualValidation@0
-      inputs:
-        instructions: "Please approve Terraform Apply"
-        onTimeout: reject
-        timeoutInMinutes: 60
 
 # ---------------- APPLY ----------------
 - stage: InfraDeploymentStage
   displayName: Terraform Apply
-  dependsOn: ValidationStage
+  dependsOn: INITSTAGE
   jobs:
   - job: InfraDeploymentJob
     steps:
@@ -90,7 +74,7 @@ stages:
       inputs:
         provider: 'azurerm'
         command: 'apply'
-        workingDirectory: '$($(System.DefaultWorkingDirectory)/environment/dev)'
+        workingDirectory: '$(workDir)'
         commandOptions: '--auto-approve'
         environmentServiceNameAzureRM: 'infraservice'
         environmentAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
