@@ -4,17 +4,10 @@ trigger:
       - main
 
 pool:
-  name: agentavi
+  name: 'agentavi'
 
-variables:
-  terraformVersion: 'latest'
-
-  # Azure details
-  azureServiceConnection: 'infraservice'
-  subscriptionId: 'b6571c78-f766-4999-8358-e9602abe50cf'
-
-  # Terraform paths
-  tfWorkingDir: '$(System.DefaultWorkingDirectory)/environment/dev'
+  variables:
+  workDir: $(System.DefaultWorkingDirectory)/dev
 
   # Backend configuration
   backendRG: 'myResourceGroup'
@@ -30,10 +23,6 @@ stages:
   - job: INITJOB
     displayName: Terraform Init Job
     steps:
-
-    - task: TerraformInstaller@1
-      inputs:
-        terraformVersion: '1.6.6'
 
     - task: TerraformTask@5
       displayName: Terraform Init
