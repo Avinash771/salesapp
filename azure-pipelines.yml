@@ -33,47 +33,47 @@ stages:
 
     - task: TerraformInstaller@1
       inputs:
-        terraformVersion: $(terraformVersion)
+        terraformVersion: 'latest'
 
     - task: TerraformTask@5
       displayName: Terraform Init
       inputs:
-        provider: azurerm
-        command: init
-        workingDirectory: '$(tfWorkingDir)'
-        backendServiceArm: $(azureServiceConnection)
-        backendAzureRmOverrideSubscriptionID: $(subscriptionId)
-        backendAzureRmResourceGroupName: $(backendRG)
-        backendAzureRmStorageAccountName: $(backendStorage)
-        backendAzureRmContainerName: $(backendContainer)
-        backendAzureRmKey: $(backendKey)
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        backendServiceArm: 'infraservice'
+        backendAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
+        backendAzureRmResourceGroupName: 'myResourceGroup'
+        backendAzureRmStorageAccountName: 'avistorage888'
+        backendAzureRmContainerName: 'avicnt'
+        backendAzureRmKey: 'ram.terraform.tfstate'
 
     - task: TerraformTask@5
       displayName: Terraform Validate
       inputs:
-        provider: azurerm
-        command: validate
-        workingDirectory: '$(tfWorkingDir)'
+        provider: 'azurerm'
+        command: 'validate'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
 
     - task: TerraformTask@5
       displayName: Terraform FMT
       inputs:
-        provider: azurerm
-        command: custom
-        customCommand: fmt
-        outputTo: console
-        workingDirectory: '$(tfWorkingDir)'
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
+        provider: 'azurerm'
+        command: 'custom'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        outputTo: 'console'
+        customCommand: 'fmt'
+        environmentServiceNameAzureRM: 'infraservice'
+        environmentAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
 
     - task: TerraformTask@5
       displayName: Terraform Plan
       inputs:
-        provider: azurerm
-        command: plan
-        workingDirectory: '$(tfWorkingDir)'
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$($(System.DefaultWorkingDirectory)/environment/dev)'
+        environmentServiceNameAzureRM: 'infraservice'
+        environmentAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
 
 # ---------------- MANUAL APPROVAL ----------------
 - stage: ValidationStage
@@ -99,9 +99,9 @@ stages:
     - task: TerraformTask@5
       displayName: Terraform Apply
       inputs:
-        provider: azurerm
-        command: apply
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$($(System.DefaultWorkingDirectory)/environment/dev)'
         commandOptions: '--auto-approve'
-        workingDirectory: '$(tfWorkingDir)'
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        environmentAzureRmOverrideSubscriptionID: $(subscriptionId)
+        environmentServiceNameAzureRM: 'infraservice'
+        environmentAzureRmOverrideSubscriptionID: 'b6571c78-f766-4999-8358-e9602abe50cf'
