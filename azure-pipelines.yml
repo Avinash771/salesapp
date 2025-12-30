@@ -16,7 +16,7 @@ stages:
            inputs:
              provider: 'azurerm'
              command: 'init'
-             workingDirectory: '$(System.DefaultWorkingDirectory)\enviornment\dev'
+             workingDirectory: '$(System.DefaultWorkingDirectory)/enviornment/dev'
              backendServiceArm: 'monolithic'
              backendAzureRmStorageAccountName: 'avistorage888'
              backendAzureRmContainerName: 'avicnt'
@@ -26,7 +26,7 @@ stages:
            inputs:
              provider: 'azurerm'
              command: 'plan'
-             workingDirectory: '$(System.DefaultWorkingDirectory)\enviornment\dev'
+             workingDirectory: '$(System.DefaultWorkingDirectory)/enviornment/dev'
              environmentServiceNameAzureRM: 'monolithic'
 
         
